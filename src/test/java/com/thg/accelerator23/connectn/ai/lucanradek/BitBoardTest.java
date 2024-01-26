@@ -19,6 +19,14 @@ public class BitBoardTest {
     }
 
     @Test
+    public void play_Return3() {
+        AnitaImprove2 anita = generateAnita();
+        anita.getCurrentBoard().play(0, 0);
+        anita.getCurrentBoard().play(0, 0);
+        assertEquals(3, anita.getCurrentBoard().getBitCounters()[0][0]);
+    }
+
+    @Test
     public void getFirstEmptyCellInCol_Return2() {
         AnitaImprove2 anita = generateAnita();
         anita.getCurrentBoard().play(0, 0);

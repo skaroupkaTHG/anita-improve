@@ -118,8 +118,12 @@ public class AnitaImprove2 extends Player {
 
         public BitBoard deepCopy() {
             int[][] originalBitCounters = this.getBitCounters();
-            int[][] copiedBitCounters = new int[originalBitCounters.length][originalBitCounters[0].length];
-            System.arraycopy(originalBitCounters, 0, copiedBitCounters, 0, originalBitCounters.length);
+            int[][] copiedBitCounters = new int[2][10];
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 10; j++) {
+                    copiedBitCounters[i][j] = originalBitCounters[i][j];
+                }
+            }
             return new BitBoard(copiedBitCounters);
         }
 

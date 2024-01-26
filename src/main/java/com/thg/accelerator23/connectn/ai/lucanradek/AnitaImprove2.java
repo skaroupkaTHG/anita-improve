@@ -5,27 +5,28 @@ import com.thehutgroup.accelerator.connectn.player.Counter;
 import com.thehutgroup.accelerator.connectn.player.Player;
 import com.thehutgroup.accelerator.connectn.player.Position;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
+
 import static java.lang.Math.pow;
 
 public class AnitaImprove2 extends Player {
 
+    int lastMove;
     private BitBoard currentBoard;
     private Simulator simulator;
     private int turn;
-
     private int[] lastFullCellPerCol;
-
-    int lastMove;
 
     public AnitaImprove2(Counter counter) {
         // Anita Improve, created by Radek
         super(counter, AnitaImprove2.class.getName());
         this.currentBoard = new BitBoard();
         this.turn = 0;
+    }
+
+    public BitBoard getCurrentBoard() {
+        return currentBoard;
     }
 
     private int[] getLastFullCellPerCol(Board board) {
@@ -42,7 +43,9 @@ public class AnitaImprove2 extends Player {
             }
         }
         return thisArray;
-    };
+    }
+
+    ;
 
     private int playStrategy1(Board board) {
         // Check where do we have possible counters in board (maybe if we are playing second)
@@ -60,21 +63,21 @@ public class AnitaImprove2 extends Player {
         currentBoard.play(1, 5);
         lastMove = 5;   // save this move
         return 5;
-    };
+    }
 
     private int playStrategy2(Board board) {
         // Check where do we have possible counters in board (maybe if we are playing second)
         lastFullCellPerCol = getLastFullCellPerCol(board);
         // WE WILL PLAY A STRATEGY
         return 5;
-    };
+    }
 
     private int playStrategy3(Board board) {
         // Check where do we have possible counters in board (maybe if we are playing second)
         lastFullCellPerCol = getLastFullCellPerCol(board);
         // WE WILL PLAY A STRATEGY
         return 5;
-    };
+    }
 
     // METHOD CALLED IN GAME TO MAKE A NEW MOVE
     @Override
@@ -124,7 +127,8 @@ public class AnitaImprove2 extends Player {
             return bitCounters;
         }
 
-        public int getFirstEmptyCellInCol(int colVal) {
+        public int getFirstEmptyCellInCol(int colIndex) {
+            int colVal = bitCounters[0][colIndex] | bitCounters[1][colIndex];
             for (int i = 1; i <= 128; i *= 2) {
                 if (colVal < i)
                     return i;
@@ -135,18 +139,18 @@ public class AnitaImprove2 extends Player {
         public int[] getFirstEmptyCellInAllCols(int playerIndex) {
             int[] firstEmptyCells = new int[10];
             for (int i = 0; i < firstEmptyCells.length; i++) {
-                firstEmptyCells[i] = getFirstEmptyCellInCol(this.bitCounters[playerIndex][i]);
+                firstEmptyCells[i] = getFirstEmptyCellInCol(i);
             }
             return firstEmptyCells;
         }
 
         public void play(int playerIndex, int colIndex) {
-            int firstEmptyCell = getFirstEmptyCellInCol(this.bitCounters[playerIndex][colIndex]);
+            int firstEmptyCell = getFirstEmptyCellInCol(colIndex);
             this.bitCounters[playerIndex][colIndex] += firstEmptyCell;
         }
 
         public boolean isFullAt(int colIndex) {
-            return getFirstEmptyCellInCol(bitCounters[0][colIndex]) > 128 || getFirstEmptyCellInCol(bitCounters[0][colIndex]) > 128;
+            return getFirstEmptyCellInCol(colIndex) >= 128 || getFirstEmptyCellInCol(colIndex) >= 128;
         }
 
         public boolean isRowWin(int col1, int col2, int col3, int col4) {
@@ -162,9 +166,10 @@ public class AnitaImprove2 extends Player {
             return isRowWin(col1 << 3, col2 << 2, col3 << 1, col4);
         }
 
-        public boolean isColWin(int colVal) {
+        public boolean isColWin(int playerIndex, int colIndex) {
+            int colVal = bitCounters[playerIndex][colIndex];
             for (int i = 0b00001111; i <= 0b11110000; i = i << 1) {
-                if ((colVal & i) != 0)
+                if ((colVal & i) == i)
                     return true;
             }
             return false;
@@ -182,7 +187,7 @@ public class AnitaImprove2 extends Player {
             }
             // cols winning
             for (int i = 0; i < bitCounters.length; i++) {
-                if (isColWin(bitCounters[playerIndex][i]))
+                if (isColWin(playerIndex, i))
                     return true;
             }
             return false;
@@ -215,8 +220,8 @@ public class AnitaImprove2 extends Player {
     // SIMULATOR CLASS (AI)
     public class Simulator {
         private final Random random = new Random();     // Field of the class
-        private BitBoard currentBoard;                  // Set with setter at each turn
         private final float[] probability;              // Set to zero at each turn
+        private BitBoard currentBoard;                  // Set with setter at each turn
         private int nTrials;                            // Set to zero at each turn
         private BitBoard tmpBoard;                      // Set equal to currentBoard at beginning of each trial, updated during trial
         private int initX;                              // Set at beginning of each trial

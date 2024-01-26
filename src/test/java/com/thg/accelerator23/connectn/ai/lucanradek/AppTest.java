@@ -1,4 +1,4 @@
-package com.thg.accelerator21.connectn.ai.lucanradek;
+package com.thg.accelerator23.connectn.ai.lucanradek;
 
 import org.junit.jupiter.api.Test;
 

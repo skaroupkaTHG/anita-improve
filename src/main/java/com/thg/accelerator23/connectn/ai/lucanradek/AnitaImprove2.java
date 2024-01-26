@@ -5,21 +5,99 @@ import com.thehutgroup.accelerator.connectn.player.Counter;
 import com.thehutgroup.accelerator.connectn.player.Player;
 import com.thehutgroup.accelerator.connectn.player.Position;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-
+import java.util.List;
+import java.util.Random;
 import static java.lang.Math.pow;
-
 
 public class AnitaImprove2 extends Player {
 
+    private BitBoard currentBoard;
+    private Simulator simulator;
+    private int turn;
+
+    private int[] lastFullCellPerCol;
+
+    int lastMove;
+
     public AnitaImprove2(Counter counter) {
-        // Anita Improvise, created by Radek
+        // Anita Improve, created by Radek
         super(counter, AnitaImprove2.class.getName());
+        this.currentBoard = new BitBoard();
+        this.turn = 0;
     }
 
+    private int[] getLastFullCellPerCol(Board board) {
+        int[] thisArray = new int[10];
+        for (int i = 0; i < 10; i++) {
+            thisArray[i] = -1;
+            for (int j = 0; j < 8; j++) {
+                Position pos = new Position(i, j);
+                if (board.hasCounterAtPosition(pos)) {
+                    if (thisArray[i] < j) { // We shouldn't need this but just to be safe
+                        thisArray[i] = j;
+                    }
+                }
+            }
+        }
+        return thisArray;
+    };
+
+    private int playStrategy1(Board board) {
+        // Check where do we have possible counters in board (maybe if we are playing second)
+        lastFullCellPerCol = getLastFullCellPerCol(board);
+        // We are going to play in the middle
+        if (lastFullCellPerCol[4] < 0) {
+            // This middle column is empty, play at 4
+            // Play move in bitboard
+            currentBoard.play(1, 4);
+            lastMove = 4;   // Save this move
+            return 4;
+        }
+        // It is the first turn, so if column 4 has a counter, column 5 is empty, play here
+        // Play move in bitboard
+        currentBoard.play(1, 5);
+        lastMove = 5;   // save this move
+        return 5;
+    };
+
+    private int playStrategy2(Board board) {
+        // Check where do we have possible counters in board (maybe if we are playing second)
+        lastFullCellPerCol = getLastFullCellPerCol(board);
+        // WE WILL PLAY A STRATEGY
+        return 5;
+    };
+
+    private int playStrategy3(Board board) {
+        // Check where do we have possible counters in board (maybe if we are playing second)
+        lastFullCellPerCol = getLastFullCellPerCol(board);
+        // WE WILL PLAY A STRATEGY
+        return 5;
+    };
+
+    // METHOD CALLED IN GAME TO MAKE A NEW MOVE
     @Override
     public int makeMove(Board board) {
-        return 4;
+        turn++;     // new turn to play
+        if (turn == 1) {
+            currentBoard.update(this.getCounter().getOther(), board);       // Update BitBoard with opponent move
+            simulator = new Simulator();                                    // Create Simulator
+            return playStrategy1(board);                                    // Play strategy
+        }
+        if (turn == 2) {
+            currentBoard.update(this.getCounter().getOther(), board);       // Update BitBoard with opponent move
+            return playStrategy2(board);                                    // Play strategy
+        }
+        if (turn == 3) {
+            currentBoard.update(this.getCounter().getOther(), board);       // Update BitBoard with opponent move
+            return playStrategy3(board);                                    // Play strategy
+        }
+        currentBoard.update(this.getCounter().getOther(), board);           // Update BitBoard with opponent move
+        simulator.learn(currentBoard);                                      // Let Simulator study the board
+        lastMove = simulator.bestMove();                                    // Save last move played
+        currentBoard.play(1, lastMove);
+        return lastMove;
     }
 
     public class BitBoard {
@@ -125,11 +203,115 @@ public class AnitaImprove2 extends Player {
             return result;
         }
 
-        public void update(Counter opponetCounter, Board board) {
-            int opponentIndex = (opponetCounter == Counter.X) ? 0 : 1; // assumes that X is first to start
+        public void update(Counter opponentCounter, Board board) {
+            // int opponentIndex = (opponentCounter == Counter.X) ? 0 : 1; // assumes that X is first to start
+            int opponentIndex = 0;
             for (int i = 0; i < bitCounters[opponentIndex].length; i++) {
-                bitCounters[opponentIndex][i] = getUpdatedColumn(board, i, opponetCounter);
+                bitCounters[opponentIndex][i] = getUpdatedColumn(board, i, opponentCounter);
             }
         }
     }
+
+    // SIMULATOR CLASS (AI)
+    public class Simulator {
+        private final Random random = new Random();     // Field of the class
+        private BitBoard currentBoard;                  // Set with setter at each turn
+        private final float[] probability;              // Set to zero at each turn
+        private int nTrials;                            // Set to zero at each turn
+        private BitBoard tmpBoard;                      // Set equal to currentBoard at beginning of each trial, updated during trial
+        private int initX;                              // Set at beginning of each trial
+
+        // CONSTRUCTOR
+        public Simulator() {
+            this.nTrials = 0;                           // Initialise number of trials to zero
+            this.probability = new float[10];
+            Arrays.fill(probability, 0.0f);         // Initialise probability with zero
+        }
+
+        //SETTERS
+        private void setCurrentBoard(BitBoard currentBoard) {
+            this.currentBoard = currentBoard;
+        }
+
+        // RESET PROBABILITY TO ZERO
+        private void resetProbability() {
+            for (int i = 0; i < 10; i++) {
+                probability[i] = 0.0f;
+            }
+        }
+
+        // RESET NUMBER OF TRIALS TO ZERO
+        private void resetNTrials() {
+            this.nTrials = 0;
+        }
+
+        // RUN ONE SINGLE TRIAL GAME
+        private void runTrial() {
+            //  WE NEED TO DECIDE WHO IS OUR PLAYER AND WHO IS THE OPPONENT (EITHER 0 OR 1).
+            // NOW I AM ASSUMING THAT WE ARE PLAYER 1 AND OPPONENT IS PLAYER 0!
+            nTrials++;                                              // Accumulate one trial in counter
+            tmpBoard = currentBoard.deepCopy();                     // Copy initial board
+            // Updated at each turn in each trial
+            int turn = 0;                                           // Start turn counter from 0
+            boolean play = true;
+            while (play) {
+                turn++;                                             // New turn
+                // Updated at each turn in each trial
+                int currentX = -1;
+                while (currentX < 0) {
+                    currentX = random.nextInt(0, 10);   // Get random x position in board
+                    if (tmpBoard.isFullAt(currentX)) {              // If that column is full
+                        currentX = -1;                              // reject random currentX
+                    }
+                    if (turn == 1) {                                // If this is the first turn we are playing in this trial game,
+                        initX = currentX;                           // Save played move at first turn
+                    }
+                }
+                tmpBoard.play(turn % 2, currentX);        // Player plays turn
+                if (tmpBoard.isWonBy(turn % 2)) {         // If current Player has won,
+                    probability[initX] += (float) turn % 2;         // This should work fine, if our player is player 1 (100% of winning from initX if player 1 won, 0% of winning from initX if player 0 won)
+                    play = false;                                   // Finish the trial.
+                } else if (tmpBoard.isDraw()) {                     // If it's a draw
+                    probability[initX] += 0.50f;                    // probability of winning from initX is 50%
+                    play = false;                                   // Finish the trial
+                }
+            }
+        }
+
+        // EVALUATE BEST MOVE WITH PROBABILITY
+        public int bestMove() {
+            float max = -100.0f;
+            int imax = -1;
+            for (int i = 0; i < probability.length; i++) {
+                probability[i] = probability[i] / nTrials;
+                System.out.printf("i %d , P(i) : %.3f\n", i, probability[i]);
+                System.out.printf("NTrials : %d", nTrials);
+                if (probability[i] > max) {
+                    max = probability[i];
+                    imax = i;
+                }
+            }
+            return imax;
+        }
+
+        public void learn(BitBoard currentBoard) {
+            int TIME_LIMIT = 8;
+            long start = System.currentTimeMillis();                        // Saving starting time
+            boolean learn = true;                                           // Let AI learn something
+            simulator.setCurrentBoard(currentBoard);                        // Set current board to simulator
+            simulator.resetProbability();                                   // Reset probability
+            simulator.resetNTrials();                                       // Reset number of trials
+            while (learn) {
+                for (int i = 0; i < 1000; i++) {                            // !!!! CHECK THIS !!! CHECK HOW MANY TRIALS WE CAN MAKE
+                    simulator.runTrial();                                   // AT THE FIRST ATTEMPTED MOVE WITH MONTE CARLO SIMULATOR (WORST CASE)
+                }
+                long lap = System.currentTimeMillis();
+                if (((lap - start) / 1000.0) > TIME_LIMIT) {
+                    learn = false;
+                }
+            }
+        }
+
+    }
+
 }

@@ -208,7 +208,17 @@ public class AnitaImprove2 extends Player {
             return result;
         }
 
+        public void printBitBoard() {
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 10; j++) {
+                    System.out.println(String.format("%8s", Integer.toBinaryString(bitCounters[i][j])).replace(" ", "0"));
+                }
+                System.out.println("\n");
+            }
+        }
+
         public void update(Counter opponentCounter, Board board) {
+            printBitBoard();
             // int opponentIndex = (opponentCounter == Counter.X) ? 0 : 1; // assumes that X is first to start
             int opponentIndex = 0;
             for (int i = 0; i < bitCounters[opponentIndex].length; i++) {

@@ -9,7 +9,7 @@ import java.util.Random;
 public class AnitaImprovise extends Player {
     public AnitaImprovise(Counter counter) {
         // Anita Improvise, created by Radek
-        super(counter, AnitaImprove2.class.getName());
+        super(counter, AnitaImprovise.class.getName());
     }
 
     @Override

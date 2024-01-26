@@ -205,7 +205,7 @@ public class AnitaImprove2 extends Player {
         public int getUpdatedColumn(Board board, int colIndex, Counter opponentCounter) { // relies on Position(0,0) being at lower left corner
             int result = 0b00000000;
             for (int i = 0; i < board.getConfig().getHeight(); i++) {
-                Position tempPosition = new Position(i, colIndex);
+                Position tempPosition = new Position(colIndex, i);
                 if (board.hasCounterAtPosition(tempPosition) && board.getCounterAtPosition(tempPosition) == opponentCounter)
                     result += (int) pow(2, i);
             }

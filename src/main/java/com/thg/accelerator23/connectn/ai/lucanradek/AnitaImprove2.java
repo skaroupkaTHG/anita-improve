@@ -207,14 +207,24 @@ public class AnitaImprove2 extends Player {
         public int getUpdatedColumn(Board board, int colIndex, Counter opponentCounter) { // relies on Position(0,0) being at lower left corner
             int result = 0b00000000;
             for (int i = 0; i < board.getConfig().getHeight(); i++) {
-                Position tempPosition = new Position(i, colIndex);
+                Position tempPosition = new Position(colIndex, i);
                 if (board.hasCounterAtPosition(tempPosition) && board.getCounterAtPosition(tempPosition) == opponentCounter)
                     result += (int) pow(2, i);
             }
             return result;
         }
 
+        public void printBitBoard() {
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 10; j++) {
+                    System.out.println(String.format("%8s", Integer.toBinaryString(bitCounters[i][j])).replace(" ", "0"));
+                }
+                System.out.println("\n");
+            }
+        }
+
         public void update(Counter opponentCounter, Board board) {
+            printBitBoard();
             // int opponentIndex = (opponentCounter == Counter.X) ? 0 : 1; // assumes that X is first to start
             int opponentIndex = 0;
             for (int i = 0; i < bitCounters[opponentIndex].length; i++) {

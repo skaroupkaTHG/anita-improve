@@ -22,6 +22,7 @@ public class AnitaImprove2 extends Player {
         // Anita Improve, created by Radek
         super(counter, AnitaImprove2.class.getName());
         this.currentBoard = new BitBoard();
+        this.simulator = new Simulator();                                    // Create Simulator
         this.turn = 0;
     }
 
@@ -85,7 +86,6 @@ public class AnitaImprove2 extends Player {
         turn++;     // new turn to play
         if (turn == 1) {
             currentBoard.update(this.getCounter().getOther(), board);       // Update BitBoard with opponent move
-            simulator = new Simulator();                                    // Create Simulator
             return playStrategy1(board);                                    // Play strategy
         }
         if (turn == 2) {
@@ -219,12 +219,12 @@ public class AnitaImprove2 extends Player {
 
     // SIMULATOR CLASS (AI)
     public class Simulator {
-        private final Random random = new Random();     // Field of the class
-        private final float[] probability;              // Set to zero at each turn
-        private BitBoard currentBoard;                  // Set with setter at each turn
-        private int nTrials;                            // Set to zero at each turn
-        private BitBoard tmpBoard;                      // Set equal to currentBoard at beginning of each trial, updated during trial
-        private int initX;                              // Set at beginning of each trial
+        public final Random random = new Random();     // Field of the class
+        public BitBoard currentBoard;                  // Set with setter at each turn
+        public final float[] probability;              // Set to zero at each turn
+        public int nTrials;                            // Set to zero at each turn
+        public BitBoard tmpBoard;                      // Set equal to currentBoard at beginning of each trial, updated during trial
+        public int initX;                              // Set at beginning of each trial
 
         // CONSTRUCTOR
         public Simulator() {
@@ -234,51 +234,62 @@ public class AnitaImprove2 extends Player {
         }
 
         //SETTERS
-        private void setCurrentBoard(BitBoard currentBoard) {
+        public void setCurrentBoard(BitBoard currentBoard) {
             this.currentBoard = currentBoard;
         }
 
         // RESET PROBABILITY TO ZERO
-        private void resetProbability() {
-            for (int i = 0; i < 10; i++) {
-                probability[i] = 0.0f;
-            }
+        public void resetProbability() {
+            Arrays.fill(probability, 0.0f);
         }
 
         // RESET NUMBER OF TRIALS TO ZERO
-        private void resetNTrials() {
+        public void resetNTrials() {
             this.nTrials = 0;
         }
 
         // RUN ONE SINGLE TRIAL GAME
-        private void runTrial() {
+        public void runTrial() {
             //  WE NEED TO DECIDE WHO IS OUR PLAYER AND WHO IS THE OPPONENT (EITHER 0 OR 1).
             // NOW I AM ASSUMING THAT WE ARE PLAYER 1 AND OPPONENT IS PLAYER 0!
             nTrials++;                                              // Accumulate one trial in counter
             tmpBoard = currentBoard.deepCopy();                     // Copy initial board
             // Updated at each turn in each trial
             int turn = 0;                                           // Start turn counter from 0
+            int playerIndex;                                        // Player Index
+            int currentX;
             boolean play = true;
             while (play) {
                 turn++;                                             // New turn
                 // Updated at each turn in each trial
-                int currentX = -1;
-                while (currentX < 0) {
-                    currentX = random.nextInt(0, 10);   // Get random x position in board
-                    if (tmpBoard.isFullAt(currentX)) {              // If that column is full
-                        currentX = -1;                              // reject random currentX
-                    }
-                    if (turn == 1) {                                // If this is the first turn we are playing in this trial game,
-                        initX = currentX;                           // Save played move at first turn
-                    }
+                currentX = selectX(10, tmpBoard);             // select empty random position in board
+                if (turn == 1) {                                    // If this is the first turn we are playing in this trial game,
+                    initX = currentX;                               // Save played move at first turn
                 }
-                tmpBoard.play(turn % 2, currentX);        // Player plays turn
-                if (tmpBoard.isWonBy(turn % 2)) {         // If current Player has won,
-                    probability[initX] += (float) turn % 2;         // This should work fine, if our player is player 1 (100% of winning from initX if player 1 won, 0% of winning from initX if player 0 won)
+                playerIndex = getPlayer(turn);
+                tmpBoard.play(playerIndex, currentX);               // Player plays turn
+                if (tmpBoard.isWonBy(playerIndex)) {                // If current Player has won,
+                    if (playerIndex == 1) {
+                        probability[initX] += 1.0f;                 // This should work fine, if our player is player 1
+                    }                                               // (100% of winning from initX if player 1 won, 0% of winning from initX if player 0 won)
                     play = false;                                   // Finish the trial.
                 } else if (tmpBoard.isDraw()) {                     // If it's a draw
                     probability[initX] += 0.50f;                    // probability of winning from initX is 50%
                     play = false;                                   // Finish the trial
+                }
+            }
+        }
+
+        public int getPlayer(int turn) {
+            return turn % 2;
+        }
+
+        public int selectX(int bound, BitBoard tmpBoard) {
+            int currentX;
+            while (true) {
+                currentX = random.nextInt(0, bound);      // Get random x position in board
+                if (!tmpBoard.isFullAt(currentX)) {              // If that column is full
+                    return currentX;                             // reject random currentX
                 }
             }
         }
@@ -290,12 +301,12 @@ public class AnitaImprove2 extends Player {
             for (int i = 0; i < probability.length; i++) {
                 probability[i] = probability[i] / nTrials;
                 System.out.printf("i %d , P(i) : %.3f\n", i, probability[i]);
-                System.out.printf("NTrials : %d", nTrials);
                 if (probability[i] > max) {
                     max = probability[i];
                     imax = i;
                 }
             }
+            System.out.printf("NTrials : %d\n", nTrials);
             return imax;
         }
 

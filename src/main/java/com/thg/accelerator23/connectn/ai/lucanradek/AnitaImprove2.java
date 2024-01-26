@@ -1,4 +1,4 @@
-package com.thg.accelerator23.connectn.ai.lucanradek;
+package com.thehutgroup.accelerator.connectn.player;
 
 import com.thehutgroup.accelerator.connectn.player.Board;
 import com.thehutgroup.accelerator.connectn.player.Counter;
@@ -46,8 +46,6 @@ public class AnitaImprove2 extends Player {
         return thisArray;
     }
 
-    ;
-
     private int playStrategy1(Board board) {
         // Check where do we have possible counters in board (maybe if we are playing second)
         lastFullCellPerCol = getLastFullCellPerCol(board);
@@ -67,17 +65,13 @@ public class AnitaImprove2 extends Player {
     }
 
     private int playStrategy2(Board board) {
-        // Check where do we have possible counters in board (maybe if we are playing second)
-        lastFullCellPerCol = getLastFullCellPerCol(board);
-        // WE WILL PLAY A STRATEGY
-        return 5;
+        // Stupid move, play at lastMove
+        return lastMove;
     }
 
     private int playStrategy3(Board board) {
-        // Check where do we have possible counters in board (maybe if we are playing second)
-        lastFullCellPerCol = getLastFullCellPerCol(board);
-        // WE WILL PLAY A STRATEGY
-        return 5;
+        // Stupid move, play next to last move
+        return lastMove + 1;
     }
 
     // METHOD CALLED IN GAME TO MAKE A NEW MOVE
@@ -97,8 +91,15 @@ public class AnitaImprove2 extends Player {
             return playStrategy3(board);                                    // Play strategy
         }
         currentBoard.update(this.getCounter().getOther(), board);           // Update BitBoard with opponent move
-        simulator.learn(currentBoard);                                      // Let Simulator study the board
+        int losingInd = simulator.learn(currentBoard);                                      // Let Simulator study the board
+        if (losingInd > 0) {
+            lastMove = losingInd;
+//            System.out.printf("BEST MOVE %d\n", lastMove);
+            currentBoard.play(1, lastMove);
+            return lastMove;
+        }
         lastMove = simulator.bestMove();                                    // Save last move played
+//        System.out.printf("BEST MOVE %d\n", lastMove);
         currentBoard.play(1, lastMove);
         return lastMove;
     }
@@ -118,8 +119,13 @@ public class AnitaImprove2 extends Player {
 
         public BitBoard deepCopy() {
             int[][] originalBitCounters = this.getBitCounters();
-            int[][] copiedBitCounters = new int[originalBitCounters.length][originalBitCounters[0].length];
-            System.arraycopy(originalBitCounters, 0, copiedBitCounters, 0, originalBitCounters.length);
+            int[][] copiedBitCounters = new int[2][10];
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 10; j++) {
+                    copiedBitCounters[i][j] = originalBitCounters[i][j];
+                }
+            }
+//            System.arraycopy(originalBitCounters, 0, copiedBitCounters, 0, originalBitCounters.length);
             return new BitBoard(copiedBitCounters);
         }
 
@@ -221,16 +227,15 @@ public class AnitaImprove2 extends Player {
     public class Simulator {
         public final Random random = new Random();     // Field of the class
         public BitBoard currentBoard;                  // Set with setter at each turn
-        public final float[] probability;              // Set to zero at each turn
+        public final float[] pWin;              // Set to zero at each turn
         public int nTrials;                            // Set to zero at each turn
-        public BitBoard tmpBoard;                      // Set equal to currentBoard at beginning of each trial, updated during trial
         public int initX;                              // Set at beginning of each trial
 
         // CONSTRUCTOR
         public Simulator() {
             this.nTrials = 0;                           // Initialise number of trials to zero
-            this.probability = new float[10];
-            Arrays.fill(probability, 0.0f);         // Initialise probability with zero
+            this.pWin = new float[10];
+            Arrays.fill(pWin, 0.0f);         // Initialise probability with zero
         }
 
         //SETTERS
@@ -240,7 +245,7 @@ public class AnitaImprove2 extends Player {
 
         // RESET PROBABILITY TO ZERO
         public void resetProbability() {
-            Arrays.fill(probability, 0.0f);
+            Arrays.fill(pWin, 0.0f);
         }
 
         // RESET NUMBER OF TRIALS TO ZERO
@@ -249,11 +254,11 @@ public class AnitaImprove2 extends Player {
         }
 
         // RUN ONE SINGLE TRIAL GAME
-        public void runTrial() {
+        public int runTrial() {
             //  WE NEED TO DECIDE WHO IS OUR PLAYER AND WHO IS THE OPPONENT (EITHER 0 OR 1).
             // NOW I AM ASSUMING THAT WE ARE PLAYER 1 AND OPPONENT IS PLAYER 0!
             nTrials++;                                              // Accumulate one trial in counter
-            tmpBoard = currentBoard.deepCopy();                     // Copy initial board
+            BitBoard tmpBoard = currentBoard.deepCopy();                     // Copy initial board
             // Updated at each turn in each trial
             int turn = 0;                                           // Start turn counter from 0
             int playerIndex;                                        // Player Index
@@ -270,14 +275,25 @@ public class AnitaImprove2 extends Player {
                 tmpBoard.play(playerIndex, currentX);               // Player plays turn
                 if (tmpBoard.isWonBy(playerIndex)) {                // If current Player has won,
                     if (playerIndex == 1) {
-                        probability[initX] += 1.0f;                 // This should work fine, if our player is player 1
-                    }                                               // (100% of winning from initX if player 1 won, 0% of winning from initX if player 0 won)
+                        pWin[initX] += 1.0f;                 // This should work fine, if our player is player 1
+//                        System.out.printf("Anita won turn %d\n", turn);
+                    } else {
+//                        System.out.printf("Anita lost turn %d\n", turn); // (100% of winning from initX if player 1 won, 0% of winning from initX if player 0 won)
+                        if (turn == 2) {
+                            return currentX;            // WE DEFINITELY LOSE HERE
+                        }
+                    }
                     play = false;                                   // Finish the trial.
                 } else if (tmpBoard.isDraw()) {                     // If it's a draw
-                    probability[initX] += 0.50f;                    // probability of winning from initX is 50%
+                    pWin[initX] += 0.50f;                    // probability of winning from initX is 50%
                     play = false;                                   // Finish the trial
+//                    System.out.printf("Draw turn %d\n", turn);
+                } else {
+//                    System.out.printf("still playing, turn %d\n", turn);
                 }
             }
+//            System.out.println("EXIT");
+            return -1;
         }
 
         public int getPlayer(int turn) {
@@ -298,20 +314,22 @@ public class AnitaImprove2 extends Player {
         public int bestMove() {
             float max = -100.0f;
             int imax = -1;
-            for (int i = 0; i < probability.length; i++) {
-                probability[i] = probability[i] / nTrials;
-                System.out.printf("i %d , P(i) : %.3f\n", i, probability[i]);
-                if (probability[i] > max) {
-                    max = probability[i];
+            for (int i = 0; i < 10; i++) {
+                pWin[i] = pWin[i] / nTrials;
+//                System.out.printf("i %d , PWIN(i) : %.3f\n", i, pWin[i]);
+                if (pWin[i] > max) {
+                    max = pWin[i];
                     imax = i;
                 }
             }
-            System.out.printf("NTrials : %d\n", nTrials);
+//            System.out.printf("NTrials : %d\n", nTrials);
+//            System.out.printf("BEST MOVE : %d\n", imax);
             return imax;
         }
 
-        public void learn(BitBoard currentBoard) {
-            int TIME_LIMIT = 8;
+        public int learn(BitBoard currentBoard) {
+            int losingInd;
+            double TIME_LIMIT = 8;
             long start = System.currentTimeMillis();                        // Saving starting time
             boolean learn = true;                                           // Let AI learn something
             simulator.setCurrentBoard(currentBoard);                        // Set current board to simulator
@@ -319,13 +337,19 @@ public class AnitaImprove2 extends Player {
             simulator.resetNTrials();                                       // Reset number of trials
             while (learn) {
                 for (int i = 0; i < 1000; i++) {                            // !!!! CHECK THIS !!! CHECK HOW MANY TRIALS WE CAN MAKE
-                    simulator.runTrial();                                   // AT THE FIRST ATTEMPTED MOVE WITH MONTE CARLO SIMULATOR (WORST CASE)
+                    losingInd = simulator.runTrial();                                   // AT THE FIRST ATTEMPTED MOVE WITH MONTE CARLO SIMULATOR (WORST CASE)
+                    if (losingInd > 0) {
+                        return losingInd;
+                    }
                 }
                 long lap = System.currentTimeMillis();
+                double time = (lap - start) / 1000.0;
+//                System.out.printf("time passed: %f\n", time);
                 if (((lap - start) / 1000.0) > TIME_LIMIT) {
                     learn = false;
                 }
             }
+            return -1;
         }
 
     }
